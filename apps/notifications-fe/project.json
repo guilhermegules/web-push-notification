@@ -1,0 +1,9 @@
+{
+  "name": "notifications-fe",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/notifications-fe/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project notifications-fe --web",
+  "targets": {}
+}
