@@ -1,40 +1,50 @@
 import express from 'express';
 import webpush from 'web-push';
 import bodyParser from 'body-parser';
+import { connectQueue, NOTIFICATION_QUEUE_NAME } from './infra/rabbitmq';
+import { redisClient, redisClientConnector } from './infra/redis';
+import { randomUUID } from 'crypto';
+import './consumers/notification-consumer';
 
 const app = express();
 app.use(bodyParser.json());
 
-const vapidKeys = webpush.generateVAPIDKeys();
-
-webpush.setVapidDetails(
-  'mailto:guilhermegules@gmail.com',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
-webpush.setGCMAPIKey('<Your GCM API Key Here>');
+let channel: Awaited<ReturnType<typeof connectQueue>>;
 
 app.get('/api/public-key', (req, res) => {
-  res.send(vapidKeys.publicKey);
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  res.send(publicKey);
 });
 
-app.post('/api/subscribe', (req, res) => {
-  const { subscription, data } = req.body;
+app.post('/api/subscribe/:userId', async (req, res) => {
+  const { subscription } = req.body;
+  const { userId } = req.params;
 
-  console.log(req.body);
+  await redisClient.set(`push:${userId}`, JSON.stringify(subscription));
 
-  const payload = JSON.stringify({
+  res.status(200).send('Subscribed');
+});
+
+app.post('/api/notify/:userId', async (req, res) => {
+  const { data } = req.body;
+  const { userId } = req.params;
+
+  const payload = {
+    id: randomUUID(),
+    userId,
     title: data.title,
     body: data.body,
-  });
+  };
 
-  webpush
-    .sendNotification(subscription, payload)
-    .then(() => res.status(200).send('Notification sent'))
-    .catch((err) => {
-      console.error(err);
-      res.status(500).send('Notification not sent');
-    });
+  await channel.sendToQueue(
+    NOTIFICATION_QUEUE_NAME,
+    Buffer.from(JSON.stringify(payload)),
+    {
+      persistent: true,
+    }
+  );
+
+  res.status(202).send('Notification sent');
 });
 
 app.post('/api/unsubscribe', (req, res) => {
@@ -47,7 +57,9 @@ app.post('/api/unsubscribe', (req, res) => {
 
 const port = process.env.PORT || 3333;
 
-const server = app.listen(port, () => {
+const server = app.listen(port, async () => {
+  channel = await connectQueue();
+  await redisClientConnector();
   console.log(`Listening at http://localhost:${port}/api`);
 });
 

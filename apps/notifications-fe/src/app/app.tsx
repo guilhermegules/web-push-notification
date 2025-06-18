@@ -1,6 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Toast } from './toast';
+import { v4 as uuidv4 } from 'uuid';
+
+const userId = uuidv4();
 
 export function App() {
+  const [toast, setToast] = useState({ open: false, message: '' });
+
   const onSubscribeToNotifications = async () => {
     if (!('serviceWorker' in navigator)) {
       console.warn('Service Workers are not supported');
@@ -18,14 +24,10 @@ export function App() {
       });
 
       const body = {
-        data: {
-          title: 'New notification',
-          body: 'Content',
-        },
         subscription,
       };
 
-      await fetch('/api/subscribe', {
+      await fetch(`/api/subscribe/${userId}`, {
         method: 'POST',
         body: JSON.stringify(body),
         headers: {
@@ -44,6 +46,7 @@ export function App() {
     const registration = await navigator.serviceWorker.ready;
 
     const subscription = await registration.pushManager.getSubscription();
+
     if (subscription) {
       const success = await subscription.unsubscribe();
       if (success) {
@@ -64,22 +67,72 @@ export function App() {
     }
   };
 
+  const onClickNotify = async () => {
+    const body = {
+      data: {
+        title: 'New notification',
+        body: 'Content',
+      },
+    };
+
+    await fetch(`/api/notify/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  };
+
   useEffect(() => {
     onUnsubscribeFromPush();
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then((registration) => {
         navigator.serviceWorker.addEventListener('message', (event) => {
           const data = event.data;
-          alert(`📢 ${data.title}\n${data.body}`);
+          setToast({
+            open: true,
+            message: `📢 ${data.title} - ${data.body}`,
+          });
         });
       });
     }
   }, []);
 
   return (
-    <div>
-      <h1>React Push Notification Alert</h1>
-      <button onClick={onSubscribeToNotifications}>Send notification</button>
+    <div className="bg-slate-600 h-screen flex items-center justify-center">
+      <div>
+        <h1 className="text-slate-100 mb-4 text-4xl">
+          React Push Notification Alert
+        </h1>
+        <div className="flex gap-2">
+          <button
+            onClick={onSubscribeToNotifications}
+            className="text-slate-100 p-2 border-x-2 border-y-2 rounded-sm"
+          >
+            Subscribe to notifications
+          </button>
+          <button
+            onClick={onClickNotify}
+            className="text-slate-100 p-2 border-x-2 border-y-2 rounded-sm"
+          >
+            Please notify me!
+          </button>
+        </div>
+      </div>
+
+      {toast.open && (
+        <Toast
+          message={toast.message}
+          onClose={() => {
+            setToast({
+              open: false,
+              message: '',
+            });
+          }}
+          duration={2000}
+        />
+      )}
     </div>
   );
 }
