@@ -1,5 +1,5 @@
 import webpush from 'web-push';
-import { connectQueue, NOTIFICATION_QUEUE_NAME } from '../infra/rabbitmq';
+import { getChannel, NOTIFICATION_QUEUE_NAME } from '../infra/rabbitmq';
 import { redisClient } from '../infra/redis';
 
 webpush.setVapidDetails(
@@ -9,12 +9,11 @@ webpush.setVapidDetails(
 );
 
 async function startNotificationConsumer() {
-  const channel = await connectQueue();
+  const channel = await getChannel();
 
   channel.consume(
     NOTIFICATION_QUEUE_NAME,
     async (msg) => {
-      console.log(msg);
       if (!msg) return;
 
       const { userId, title, body } = JSON.parse(msg.content.toString());
