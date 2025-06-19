@@ -1,5 +1,9 @@
 import { useEffect } from 'react';
 import { urlBase64ToUint8Array } from '../utils/base64';
+import { useMutation } from '@tanstack/react-query';
+import { notificationSubscribeService } from '../services/notification-subscribe-service';
+import { notificationService } from '../services/notification-service';
+import { notificationUnsubscribeService } from '../services/notification-unsubscribe-service';
 
 type UseNotificationProps = {
   userId: string;
@@ -10,6 +14,18 @@ export const useNotification = ({
   userId,
   toastAction,
 }: UseNotificationProps) => {
+  const notificationSubscribeMutation = useMutation({
+    mutationFn: notificationSubscribeService,
+  });
+
+  const notificationMutation = useMutation({
+    mutationFn: notificationService,
+  });
+
+  const notificationUnsubscribeMutation = useMutation({
+    mutationFn: notificationUnsubscribeService,
+  });
+
   const onSubscribe = async () => {
     if (!('serviceWorker' in navigator)) {
       console.warn('Service Workers are not supported');
@@ -30,12 +46,9 @@ export const useNotification = ({
         subscription,
       };
 
-      await fetch(`/api/subscribe/${userId}`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      notificationSubscribeMutation.mutate({
+        userId,
+        body,
       });
     });
   };
@@ -45,13 +58,7 @@ export const useNotification = ({
       data,
     };
 
-    await fetch(`/api/notify/${userId}`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    notificationMutation.mutate({ body, userId });
   };
 
   const onUnsubscribe = async () => {
@@ -69,12 +76,9 @@ export const useNotification = ({
       if (success) {
         console.log('User is unsubscribed from push notifications.');
 
-        await fetch(`/api/unsubscribe/${userId}`, {
-          method: 'POST',
-          body: JSON.stringify(subscription),
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        notificationUnsubscribeMutation.mutate({
+          userId,
+          body: subscription,
         });
       } else {
         console.warn('User without subscription.');
