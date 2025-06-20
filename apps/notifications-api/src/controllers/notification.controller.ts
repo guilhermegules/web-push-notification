@@ -19,7 +19,7 @@ export const notificationController = {
 
     await redisClient.set(`push:${userId}`, JSON.stringify(subscription));
 
-    res.status(200).send('Subscribed');
+    res.status(201).send({ message: 'Subscribed' });
   },
   notify: async (
     req: Request<{
@@ -47,7 +47,7 @@ export const notificationController = {
       }
     );
 
-    res.status(202).send('Notification sent');
+    res.status(202).send({ message: 'Notification sent' });
   },
   unsubscribe: async (
     req: Request<{
@@ -59,6 +59,6 @@ export const notificationController = {
 
     await redisClient.del(`push:${userId}`);
 
-    res.status(200).send('Unsubscribed successfully');
+    res.status(200).send({ message: 'Unsubscribed successfully' });
   },
 };
