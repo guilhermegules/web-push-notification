@@ -1,7 +1,36 @@
 import axios from 'axios';
-import { randomUUID } from 'crypto';
+import { createECDH, randomBytes, randomUUID } from 'crypto';
+import base64url from 'base64url';
+import path from 'path';
+import fs from 'fs';
+import { createClient } from 'redis';
 
 const BASE_URL = process.env.API_BASE_URL || 'http://localhost:3333';
+
+const config = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, '../support/.tmp/containers.json'),
+    'utf-8'
+  )
+);
+
+function createTestSubscription(vapidPublicKey: string) {
+  const ecdh = createECDH('prime256v1');
+  ecdh.generateKeys();
+
+  const p256dh = base64url.encode(ecdh.getPublicKey());
+  const auth = base64url.encode(randomBytes(16));
+
+  return {
+    subscription: {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/fake-token',
+      keys: {
+        p256dh,
+        auth,
+      },
+    },
+  };
+}
 
 describe('Notifications API (e2e)', () => {
   const userId = randomUUID();
@@ -14,20 +43,27 @@ describe('Notifications API (e2e)', () => {
   });
 
   it('should accept a subscription', async () => {
-    const fakeSubscription = {
-      subscription: {
-        endpoint: 'https://fcm.googleapis.com/fake-endpoint',
-        keys: {
-          p256dh: 'fake-key',
-          auth: 'fake-auth',
-        },
-      },
-    };
+    const keyRes = await axios.get(`${BASE_URL}/api/public-key`);
+    const publicKey = keyRes.data;
+
+    const fakeSubscription = createTestSubscription(publicKey);
 
     const res = await axios.post(
       `${BASE_URL}/api/subscribe/${userId}`,
       fakeSubscription
     );
+
+    const client = createClient({ url: config.redisUrl });
+    await client.connect();
+
+    const redisKey = `push:${userId}`;
+    const value = await client.get(redisKey);
+
+    expect(value).toBeTruthy();
+    const parsed = JSON.parse(value as string);
+    expect(parsed.endpoint).toContain('https://fcm.googleapis.com');
+
+    client.destroy();
 
     expect(res.status).toBe(201);
   });
