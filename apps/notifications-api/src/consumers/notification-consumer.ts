@@ -35,7 +35,7 @@ async function startNotificationConsumer() {
         channel.ack(msg);
       } catch (error) {
         console.error(`Notification error: `, error.statusCode, error.message);
-        if (error.statusCode === 404) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
           await redisClient.del(`push:${userId}`);
         }
         channel.ack(msg);
