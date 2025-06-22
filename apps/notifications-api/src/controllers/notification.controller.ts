@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { redisClient } from '../infra/redis';
-import { randomUUID } from 'crypto';
-import { getChannel, NOTIFICATION_QUEUE_NAME } from '../infra/rabbitmq';
+import { notificationService } from '../services/notification-service';
 
 export const notificationController = {
   getPublicKey: (req: Request, res: Response) => {
@@ -17,9 +15,14 @@ export const notificationController = {
     const { subscription } = req.body;
     const { userId } = req.params;
 
-    await redisClient.set(`push:${userId}`, JSON.stringify(subscription));
+    try {
+      await notificationService.subscribe(userId, subscription);
 
-    res.status(201).send({ message: 'Subscribed' });
+      res.status(201).send({ message: 'Subscribed' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ message: 'Internal server error' });
+    }
   },
   notify: async (
     req: Request<{
@@ -30,24 +33,14 @@ export const notificationController = {
     const { data } = req.body;
     const { userId } = req.params;
 
-    const payload = {
-      id: randomUUID(),
-      userId,
-      title: data.title,
-      body: data.body,
-    };
+    try {
+      await notificationService.notify(userId, data);
 
-    const channel = await getChannel();
-
-    channel.sendToQueue(
-      NOTIFICATION_QUEUE_NAME,
-      Buffer.from(JSON.stringify(payload)),
-      {
-        persistent: true,
-      }
-    );
-
-    res.status(202).send({ message: 'Notification sent' });
+      res.status(202).send({ message: 'Notification sent' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ message: 'Internal server error' });
+    }
   },
   unsubscribe: async (
     req: Request<{
@@ -57,8 +50,12 @@ export const notificationController = {
   ) => {
     const { userId } = req.params;
 
-    await redisClient.del(`push:${userId}`);
-
-    res.status(200).send({ message: 'Unsubscribed successfully' });
+    try {
+      await notificationService.unsubscribe(userId);
+      res.status(200).send({ message: 'Unsubscribed successfully' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ message: 'Internal server error' });
+    }
   },
 };
