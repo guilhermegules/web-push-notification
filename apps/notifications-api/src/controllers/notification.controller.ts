@@ -51,7 +51,7 @@ export const notificationController = {
     const { userId } = req.params;
 
     try {
-      notificationService.unsubscribe(userId);
+      await notificationService.unsubscribe(userId);
       res.status(200).send({ message: 'Unsubscribed successfully' });
     } catch (err) {
       console.error(err);
