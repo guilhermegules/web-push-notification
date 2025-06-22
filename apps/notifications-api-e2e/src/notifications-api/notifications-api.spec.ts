@@ -23,7 +23,8 @@ function createTestSubscription(vapidPublicKey: string) {
 
   return {
     subscription: {
-      endpoint: 'https://fcm.googleapis.com/fcm/send/fake-token',
+      endpoint:
+        'https://fcm.googleapis.com/fcm/send/fEBjJKe3-cU:APA91bFHR76EHP1WB2ANJyz0hu0-r9c0_W3zCVcQNzabCilbMavq5hDCRM2cUKiQDnEdcySsBLjPGK5KdTtMJRjkYBiKVSW6CrEoo8B5t7bPijVkm8X3tVziSxj04qChSk5vClQdpXHt',
       keys: {
         p256dh,
         auth,
@@ -34,6 +35,17 @@ function createTestSubscription(vapidPublicKey: string) {
 
 describe('Notifications API (e2e)', () => {
   const userId = randomUUID();
+
+  let client;
+
+  beforeAll(async () => {
+    client = createClient({ url: config.REIDS_URL });
+    await client.connect();
+  });
+
+  afterAll(async () => {
+    await client.quit();
+  });
 
   it('should response with the public key', async () => {
     const res = await axios.get(`${BASE_URL}/api/public-key`);
@@ -53,9 +65,6 @@ describe('Notifications API (e2e)', () => {
       fakeSubscription
     );
 
-    const client = createClient({ url: config.redisUrl });
-    await client.connect();
-
     const redisKey = `push:${userId}`;
     const value = await client.get(redisKey);
 
@@ -63,12 +72,17 @@ describe('Notifications API (e2e)', () => {
     const parsed = JSON.parse(value as string);
     expect(parsed.endpoint).toContain('https://fcm.googleapis.com');
 
-    client.destroy();
-
     expect(res.status).toBe(201);
   });
 
   it('should queue a notification', async () => {
+    const keyRes = await axios.get(`${BASE_URL}/api/public-key`);
+    const publicKey = keyRes.data;
+
+    const fakeSubscription = createTestSubscription(publicKey);
+
+    await axios.post(`${BASE_URL}/api/subscribe/${userId}`, fakeSubscription);
+
     const res = await axios.post(`${BASE_URL}/api/notify/${userId}`, {
       data: {
         title: 'Test Notification',
