@@ -32,10 +32,8 @@ apps/
 
 ### 2. Generate VAPID keys
 
-```ts
-// libs/utils/generate-vapid-keys.ts
-import webpush from 'web-push';
-console.log(webpush.generateVAPIDKeys());
+```bash
+npx web-push generate-vapid-keys --json
 ```
 
 Add the keys to your .env file:
