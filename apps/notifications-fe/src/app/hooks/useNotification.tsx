@@ -27,8 +27,8 @@ export const useNotification = ({
   });
 
   const onSubscribe = async () => {
-    if (!('serviceWorker' in navigator)) {
-      console.warn('Service Workers are not supported');
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('Push not supported in this browser.');
       return;
     }
 
@@ -37,10 +37,15 @@ export const useNotification = ({
         res.text()
       );
 
-      const subscription = await register.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
+      const subscription = await register.pushManager
+        .subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        })
+        .catch((err) => {
+          console.error(`Push manager subscribe was failed ${err}`);
+          return err;
+        });
 
       const body = {
         subscription,
