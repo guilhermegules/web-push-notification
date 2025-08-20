@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { notificationService } from '../services/notification-service';
+import { logger } from '../infra/logger';
 
 export const notificationController = {
   getPublicKey: (req: Request, res: Response) => {
@@ -20,7 +21,7 @@ export const notificationController = {
 
       res.status(201).send({ message: 'Subscribed' });
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       res.status(500).send({ message: 'Internal server error' });
     }
   },
@@ -38,7 +39,7 @@ export const notificationController = {
 
       res.status(202).send({ message: 'Notification sent' });
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       res.status(500).send({ message: 'Internal server error' });
     }
   },
@@ -54,7 +55,7 @@ export const notificationController = {
       await notificationService.unsubscribe(userId);
       res.status(200).send({ message: 'Unsubscribed successfully' });
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       res.status(500).send({ message: 'Internal server error' });
     }
   },

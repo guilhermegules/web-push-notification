@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import { getChannel, NOTIFICATION_QUEUE_NAME } from '../infra/rabbitmq';
 import { redisClient } from '../infra/redis';
+import { logger } from '../infra/logger';
 
 webpush.setVapidDetails(
   'mailto:you@example.com',
@@ -21,7 +22,7 @@ async function startNotificationConsumer() {
       const subscription = await redisClient.get(`push:${userId}`);
 
       if (!subscription) {
-        console.warn(`Subscription not found for user ${userId}`);
+        logger.warn(`Subscription not found for user ${userId}`);
         channel.ack(msg);
         return;
       }
@@ -31,10 +32,12 @@ async function startNotificationConsumer() {
           JSON.parse(subscription as string),
           JSON.stringify({ title, body })
         );
-        console.log(`Sent to user ${userId}`);
+        logger.debug(`Sent to user ${userId}`);
         channel.ack(msg);
       } catch (error) {
-        console.error(`Notification error: `, error.statusCode, error.message);
+        logger.error(
+          `Notification error: ${error.statusCode} ${error.message}`
+        );
         if (error.statusCode === 404 || error.statusCode === 410) {
           await redisClient.del(`push:${userId}`);
         }
