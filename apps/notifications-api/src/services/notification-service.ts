@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getChannel, NOTIFICATION_QUEUE_NAME } from '../infra/rabbitmq';
 import { redisClient } from '../infra/redis';
+import { logger } from '../infra/logger';
 
 export const notificationService = {
   subscribe: async (userId: string, subscription: PushSubscription) => {
@@ -13,6 +14,8 @@ export const notificationService = {
       title: data.title,
       body: data.body,
     };
+
+    logger.info(payload);
 
     const channel = await getChannel();
 

@@ -62,3 +62,14 @@ Service:
   - `nx serve notications-api`
 - Run the frontend app
   - `nx serve notifications-fe`
+
+## Observability
+
+- Start all containers with `docker compose up`
+- Access Grafana in `http://localhost:3001`
+- Login with user/pass admin/admin
+- Add a new `Data sources` with Loki in `http://loki:3100`
+- To see all logs use the query
+  ```
+  {app="notifications-api", level="info"} |= ``
+  ```
